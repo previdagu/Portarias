@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de Portarias — PRF 6ª Região</title>
+<style>
+/* ═══════════════════════════════════════════
+   LAYOUT GERAL
+═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #e8e8e8;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  grid-template-rows: auto 1fr;
+}
+
+/* TOPBAR */
+.topbar {
+  grid-column: 1 / -1;
+  background: #1b2e4b;
+  color: #fff;
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 3px solid #c8a84b;
+}
+.topbar h1 { font-size: 15px; font-weight: 600; letter-spacing: .3px; }
+.topbar p  { font-size: 11px; color: #a0b4cc; margin-top: 1px; }
+.topbar-right { margin-left: auto; display: flex; gap: 8px; }
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255,255,255,.1);
+  border-radius: 16px;
+  font-size: 11px;
+  border: 1px solid rgba(255,255,255,.2);
+}
+.status-badge.connected {
+  background: rgba(39, 170, 113, .2);
+  border-color: rgba(39, 170, 113, .4);
+  color: #27aa71;
+}
+.status-badge.disconnected {
+  background: rgba(180, 35, 24, .2);
+  border-color: rgba(180, 35, 24, .4);
+  color: #b42318;
+}
+
+/* PAINEL ESQUERDO */
+.panel {
+  background: #fff;
+  border-right: 1px solid #d0d5dd;
+  overflow-y: auto;
+  height: calc(100vh - 55px);
+  padding: 20px 18px 40px;
+}
+
+/* VISUALIZAÇÃO DIREITA */
+.preview-wrap {
+  overflow-y: auto;
+  height: calc(100vh - 55px);
+  background: #d4d4d4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 24px;
+  gap: 16px;
+}
+
+/* ═══════════════════════════════════════════
+   FORMULÁRIO
+═══════════════════════════════════════════ */
+.section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #1b2e4b;
+  margin: 18px 0 10px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #e8edf2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.section-title:first-child { margin-top: 0; }
+
+label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #344054;
+  margin-bottom: 4px;
+}
+input[type=text], input[type=date], textarea, select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 5px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #1d2939;
+  background: #f9fafb;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  margin-bottom: 10px;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: #1b2e4b;
+  box-shadow: 0 0 0 3px rgba(27,46,75,.1);
+  background: #fff;
+}
+textarea { resize: vertical; min-height: 60px; }
+
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ARTIGOS */
+.artigos-lista { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+
+.artigo-card {
+  border: 1px solid #d0d5dd;
+  border-left: 3px solid #1b2e4b;
+  border-radius: 0 6px 6px 0;
+  background: #f8fafc;
+  overflow: hidden;
+}
+.artigo-card.dispensar { border-left-color: #b42318; }
+.artigo-card.designar  { border-left-color: #027a48; }
+.artigo-card.designar_atuacao { border-left-color: #026aa2; }
+.artigo-card.remover        { border-left-color: #b54708; }
+.artigo-card.remover_oficio { border-left-color: #6941c6; }
+.artigo-card.livre     { border-left-color: #6941c6; }
+
+.artigo-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0,0,0,.03);
+  border-bottom: 1px solid #e4e7ec;
+  cursor: pointer;
+  user-select: none;
+}
+.artigo-header span.num {
+  font-size: 11px;
+  font-weight: 700;
+  color: #667085;
+  min-width: 20px;
+}
+.artigo-header select {
+  flex: 1;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-color: transparent;
+  background: transparent;
+}
+.artigo-header select:focus { background: #fff; border-color: #d0d5dd; }
+.btn-rem-art {
+  background: none;
+  border: none;
+  color: #b42318;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.btn-rem-art:hover { background: #fee4e2; }
+
+.artigo-body { padding: 10px 12px; display: none; }
+.artigo-body.open { display: block; }
+
+/* BOTÕES */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all .15s;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.btn-primary { background: #1b2e4b; color: #fff; }
+.btn-primary:hover { background: #253f6a; }
+.btn-gold { background: #c8a84b; color: #1b2e4b; }
+.btn-gold:hover { background: #dbbe6a; }
+.btn-outline { background: transparent; color: #1b2e4b; border: 1.5px solid #1b2e4b; }
+.btn-outline:hover { background: #1b2e4b; color: #fff; }
+.btn-ghost { background: #f2f4f7; color: #344054; border: 1px solid #d0d5dd; }
+.btn-ghost:hover { background: #e4e7ec; }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-full { width: 100%; justify-content: center; margin-top: 4px; }
+
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid #e4e7ec; }
+
+/* TOGGLE */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.toggle {
+  position: relative;
+  width: 36px; height: 20px;
+  flex-shrink: 0;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: #d0d5dd;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  left: 3px; top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.toggle input:checked + .toggle-slider { background: #1b2e4b; }
+.toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+.toggle-label { font-size: 12px; color: #344054; }
+
+/* MODAL */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal.active { display: flex; }
+.modal-content {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,.1);
+}
+.modal-header {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #1b2e4b;
+}
+.modal-body {
+  margin-bottom: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.config-field {
+  margin-bottom: 14px;
+}
+.config-field label {
+  display: block;
+  margin-bottom: 6px;
+}
+.config-field input {
+  margin-bottom: 0;
+}
+.alert {
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  display: none;
+}
+.alert.active { display: block; }
+.alert.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.alert.error { background: #fee2e2; color: #7f1d1d; border: 1px solid #fecaca; }
+.alert.info { background: #dbeafe; color: #082f49; border: 1px solid #bfdbfe; }
+
+/* ═══════════════════════════════════════════
+   PREVIEW — FOLHA A4
+═══════════════════════════════════════════ */
+.sheet {
+  width: 794px;
+  min-height: 500px;
+  background: #fff;
+  box-shadow: 0 4px 24px rgba(0,0,0,.18);
+  padding: 68px 57px 68px 85px; /* margens A4: T3cm R2cm B2.5cm L3cm */
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #000;
+  position: relative;
+}
+
+.sheet .ementa {
+  text-align: center;
+  margin-bottom: 1.2em;
+}
+
+.sheet .preambulo {
+  text-indent: 1.25cm;
+  text-align: justify;
+  margin-bottom: 1.2em;
+}
+
+.sheet .artigo {
+  text-indent: 1.25cm;
+  text-align: justify;
+  margin-bottom: .7em;
+}
+
+.sheet .par-unico {
+  text-indent: 1.25cm;
+  text-align: justify;
+  margin-bottom: .7em;
+  padding-left: 1.5em;
+}
+
+.sheet .assinatura {
+  text-align: right;
+  margin-top: 3em;
+  font-weight: bold;
+}
+.sheet .assinatura p { line-height: 1.4; }
+
+.sheet .separador { height: 1.2em; }
+
+/* Print */
+@media print {
+  body { display: block; background: none; }
+  .panel, .topbar { display: none; }
+  .preview-wrap { background: none; padding: 0; height: auto; }
+  .sheet { box-shadow: none; margin: 0; width: 100%; }
+  .toolbar-preview { display: none; }
+}
+
+/* Preview toolbar */
+.toolbar-preview {
+  width: 794px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Placeholder */
+.placeholder {
+  color: #aaa;
+  font-style: italic;
+  text-align: center;
+  padding: 60px 20px;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 14px;
+}
+
+/* Badge tipo */
+.tipo-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.tipo-badge.dispensar { background: #fee4e2; color: #b42318; }
+.tipo-badge.designar, .tipo-badge.designar_atuacao { background: #d1fadf; color: #027a48; }
+.tipo-badge.remover { background: #fef0c7; color: #b54708; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div>
+    <h1>⚖ Gerador de Portarias</h1>
+    <p>PRF 6ª Região — Corpo do documento (ementa → signatário)</p>
+  </div>
+  <div class="topbar-right">
+    <div class="status-badge disconnected" id="status-badge">
+      <span id="status-text">Desconectado</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="abrirConfigSharePoint()">🔧 SharePoint</button>
+    <button class="btn btn-ghost btn-sm" onclick="importarJSON()">📂 Importar JSON</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportarJSON()">💾 Exportar JSON</button>
+    <button class="btn btn-gold btn-sm" onclick="window.print()">🖨 Imprimir</button>
+  </div>
+</div>
+
+<!-- CONTAINER DE ALERTAS -->
+<div id="alert-container" style="position: fixed; top: 70px; right: 20px; z-index: 999; max-width: 300px;"></div>
+
+<!-- MODAL DE CONFIGURAÇÃO SHAREPOINT -->
+<div class="modal" id="modal-sharepoint">
+  <div class="modal-content">
+    <div class="modal-header">⚙️ Configurar SharePoint</div>
+    <div class="modal-body">
+      <div class="config-field">
+        <label>URL do Site SharePoint</label>
+        <input type="text" id="config-site-url" placeholder="https://seu-site.sharepoint.com/sites/...">
+      </div>
+      <div class="config-field">
+        <label>Nome da Pasta</label>
+        <input type="text" id="config-pasta" placeholder="Portarias" value="Portarias">
+      </div>
+      <p style="font-size:11px; color:#666; margin-top:14px;">
+        <strong>ℹ️ Como funciona:</strong><br>
+        • Salve os arquivos JSON na pasta do SharePoint<br>
+        • Ou use a sincronização automática se configurar credenciais<br>
+        • Os dados serão salvos e sincronizados
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="fecharModalSharePoint()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarConfigSharePoint()">Salvar</button>
+    </div>
+  </div>
+</div>
+<div class="panel">
+
+  <div class="section-title">📋 Ementa</div>
+  <label>Texto da ementa <small style="font-weight:400;color:#667">(deixe vazio para gerar automaticamente)</small></label>
+  <textarea id="ementa" rows="3" placeholder="Designa Procuradores Federais para..."></textarea>
+
+  <div class="section-title">⚖ Autoridade e Fundamento</div>
+  <label>Título da autoridade</label>
+  <input type="text" id="autoridade_titulo" value="A Procuradora Regional Federal da 6ª Região">
+
+  <label>Fundamento legal</label>
+  <input type="text" id="fundamento" value="no uso da competência de que trata o art.8º da Portaria PGF nº 172/2016">
+
+  <label>NUP do processo administrativo <small style="font-weight:400;color:#667">(opcional)</small></label>
+  <input type="text" id="nup" placeholder="Ex: 00417.108189/2025-52">
+
+  <div class="toggle-row">
+    <label class="toggle">
+      <input type="checkbox" id="convalidar">
+      <span class="toggle-slider"></span>
+    </label>
+    <span class="toggle-label">Incluir cláusula de convalidação de atos anteriores</span>
+  </div>
+
+  <label>Texto de vigência personalizado <small style="font-weight:400;color:#667">(opcional)</small></label>
+  <input type="text" id="vigencia_especial" placeholder="Esta Portaria entra em vigor na data de sua publicação.">
+
+  <div class="section-title">📝 Artigos</div>
+  <div id="artigos-lista" class="artigos-lista"></div>
+  <button class="btn btn-outline btn-full btn-sm" onclick="addArtigo()">＋ Adicionar artigo</button>
+
+  <div class="section-title">✍ Signatário</div>
+  <label>Nome</label>
+  <input type="text" id="signatario_nome" value="Karina Brandão Rezende Oliveira">
+  <label>Cargo</label>
+  <input type="text" id="signatario_cargo" value="Procuradora Regional Federal da 6ª Região">
+
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="gerar()">▶ Gerar portaria</button>
+    <button class="btn btn-outline btn-sm" onclick="salvarNoSharePoint()">💾 Salvar SP</button>
+    <button class="btn btn-outline btn-sm" onclick="carregarDoSharePoint()">📂 Carregar SP</button>
+    <button class="btn btn-ghost" onclick="limpar()">✕ Limpar</button>
+  </div>
+</div>
+
+<!-- PREVIEW DIREITO -->
+<div class="preview-wrap">
+  <div class="toolbar-preview">
+    <button class="btn btn-ghost btn-sm" onclick="copiarTexto()">📋 Copiar texto</button>
+    <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+  </div>
+  <div class="sheet" id="sheet">
+    <div class="placeholder">Preencha o formulário e clique em <strong>Gerar portaria</strong></div>
+  </div>
+</div>
+
+<!-- INPUT FILE OCULTO -->
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="lerJSON(event)">
+
+<script>
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let artigos = [];
+let artigoId = 0;
+
+// ═══════════════════════════════════════════
+//  ARTIGOS — adicionar / remover / toggle
+// ═══════════════════════════════════════════
+const TIPOS = {
+  dispensar:        'Dispensar',
+  designar:         'Designar (encargo)',
+  designar_atuacao: 'Designar (atuar em equipe)',
+  remover:          'Remover a pedido',
+  remover_oficio:   'Remover (de ofício)',
+  livre:            'Texto livre',
+};
+
+function addArtigo(dados = {}) {
+  const id = ++artigoId;
+  artigos.push({ id, acao: dados.acao || 'designar', ...dados });
+  renderArtigos();
+  // abre o último
+  setTimeout(() => toggleArtigo(id), 50);
+}
+
+function removeArtigo(id) {
+  artigos = artigos.filter(a => a.id !== id);
+  renderArtigos();
+}
+
+function toggleArtigo(id) {
+  const body = document.getElementById(`ab-${id}`);
+  if (body) body.classList.toggle('open');
+}
+
+function renderArtigos() {
+  const cont = document.getElementById('artigos-lista');
+  cont.innerHTML = '';
+  artigos.forEach((art, idx) => {
+    const div = document.createElement('div');
+    div.className = `artigo-card ${art.acao}`;
+    div.id = `ac-${art.id}`;
+    div.innerHTML = `
+      <div class="artigo-header" onclick="toggleArtigo(${art.id})">
+        <span class="num">Art. ${idx+1}º</span>
+        <select onchange="mudarTipo(${art.id}, this.value)" onclick="event.stopPropagation()">
+          ${Object.entries(TIPOS).map(([v,l]) =>
+            `<option value="${v}" ${art.acao===v?'selected':''}>${l}</option>`
+          ).join('')}
+        </select>
+        <button class="btn-rem-art" onclick="event.stopPropagation();removeArtigo(${art.id})" title="Remover">×</button>
+      </div>
+      <div class="artigo-body" id="ab-${art.id}">
+        ${camposParaTipo(art)}
+      </div>`;
+    cont.appendChild(div);
+  });
+}
+
+function mudarTipo(id, novoTipo) {
+  const art = artigos.find(a => a.id === id);
+  if (art) {
+    art.acao = novoTipo;
+    const card = document.getElementById(`ac-${id}`);
+    card.className = `artigo-card ${novoTipo}`;
+    const body = document.getElementById(`ab-${id}`);
+    const wasOpen = body.classList.contains('open');
+    body.innerHTML = camposParaTipo(art);
+    if (wasOpen) body.classList.add('open');
+  }
+}
+
+function camposParaTipo(art) {
+  const id = art.id;
+  const v = (field) => art[field] || '';
+
+  const camposBase = `
+    <div class="form-row">
+      <div>
+        <label>Cargo do(a) servidor(a)</label>
+        <input type="text" placeholder="Procurador(a) Federal" value="${v('cargo_servidor')}"
+          oninput="setField(${id},'cargo_servidor',this.value)">
+      </div>
+      <div>
+        <label>Nome completo</label>
+        <input type="text" placeholder="Nome Completo" value="${v('nome_servidor')}"
+          oninput="setField(${id},'nome_servidor',this.value)">
+      </div>
+    </div>
+    <label>Matrícula Siape</label>
+    <input type="text" placeholder="1234567" value="${v('siape')}"
+      oninput="setField(${id},'siape',this.value)">`;
+
+  if (art.acao === 'livre') {
+    return `<label>Texto completo do artigo</label>
+      <textarea rows="4" placeholder="Digite o texto completo..." oninput="setField(${id},'texto_livre',this.value)">${v('texto_livre')}</textarea>`;
+  }
+
+  if (art.acao === 'dispensar') {
+    return camposBase + `
+      <label>Encargo do qual é dispensado</label>
+      <input type="text" placeholder="Coordenador Substituto da Equipe de..." value="${v('encargo')}"
+        oninput="setField(${id},'encargo',this.value)">
+      <div class="form-row">
+        <div>
+          <label>Unidade (nome)</label>
+          <input type="text" placeholder="Procuradoria Regional Federal da 6ª Região" value="${v('unidade')}"
+            oninput="setField(${id},'unidade',this.value)">
+        </div>
+        <div>
+          <label>Sigla</label>
+          <input type="text" placeholder="EFIN6" value="${v('sigla')}"
+            oninput="setField(${id},'sigla',this.value)">
+        </div>
+      </div>`;
+  }
+
+  if (art.acao === 'designar') {
+    return camposBase + `
+      <label>Encargo para o qual é designado</label>
+      <input type="text" placeholder="Coordenador da Equipe de..." value="${v('encargo')}"
+        oninput="setField(${id},'encargo',this.value)">
+      <div class="form-row">
+        <div>
+          <label>Unidade (nome)</label>
+          <input type="text" placeholder="Procuradoria Regional Federal da 6ª Região" value="${v('unidade')}"
+            oninput="setField(${id},'unidade',this.value)">
+        </div>
+        <div>
+          <label>Sigla</label>
+          <input type="text" placeholder="EFIN6" value="${v('sigla')}"
+            oninput="setField(${id},'sigla',this.value)">
+        </div>
+      </div>
+      <label>A contar de (data)</label>
+      <input type="date" value="${v('a_contar')}" oninput="setField(${id},'a_contar',this.value)">`;
+  }
+
+  if (art.acao === 'designar_atuacao') {
+    return camposBase + `
+      <div class="form-row">
+        <div>
+          <label>Equipe / Unidade</label>
+          <input type="text" placeholder="Equipe de Segurados Especiais..." value="${v('unidade')}"
+            oninput="setField(${id},'unidade',this.value)">
+        </div>
+        <div>
+          <label>Sigla</label>
+          <input type="text" placeholder="ESEAS6" value="${v('sigla')}"
+            oninput="setField(${id},'sigla',this.value)">
+        </div>
+      </div>
+      <label>A contar de (data)</label>
+      <input type="date" value="${v('a_contar')}" oninput="setField(${id},'a_contar',this.value)">`;
+  }
+
+  if (art.acao === 'remover' || art.acao === 'remover_oficio') {
+    return camposBase + `
+      <div class="form-row">
+        <div>
+          <label>Equipe de origem</label>
+          <input type="text" placeholder="Equipe de Benefício por Incapacidade..." value="${v('unidade_origem')}"
+            oninput="setField(${id},'unidade_origem',this.value)">
+        </div>
+        <div>
+          <label>Sigla origem</label>
+          <input type="text" placeholder="EBI6" value="${v('sigla_origem')}"
+            oninput="setField(${id},'sigla_origem',this.value)">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Equipe de destino</label>
+          <input type="text" placeholder="Equipe de Cobrança..." value="${v('unidade_destino')}"
+            oninput="setField(${id},'unidade_destino',this.value)">
+        </div>
+        <div>
+          <label>Sigla destino</label>
+          <input type="text" placeholder="EDCJUD6" value="${v('sigla_destino')}"
+            oninput="setField(${id},'sigla_destino',this.value)">
+        </div>
+      </div>
+      <label>A contar de (data)</label>
+      <input type="date" value="${v('a_contar')}" oninput="setField(${id},'a_contar',this.value)">
+      <div class="toggle-row" style="margin-top:6px">
+        <label class="toggle">
+          <input type="checkbox" ${art.paragrafo_unico!==false?'checked':''} onchange="setField(${id},'paragrafo_unico',this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">Incluir parágrafo único (vedação de redistribuição)</span>
+      </div>`;
+  }
+
+  return '';
+}
+
+function setField(id, field, value) {
+  const art = artigos.find(a => a.id === id);
+  if (art) art[field] = value;
+}
+
+// ═══════════════════════════════════════════
+//  GERAÇÃO DO DOCUMENTO
+// ═══════════════════════════════════════════
+function val(id) { return document.getElementById(id).value.trim(); }
+function chk(id) { return document.getElementById(id).checked; }
+
+function dataExtenso(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  const meses = ['janeiro','fevereiro','março','abril','maio','junho',
+                 'julho','agosto','setembro','outubro','novembro','dezembro'];
+  return `${parseInt(d)}/${String(m).padStart(2,'0')}/${y}`;
+}
+
+function gerarEmentaAuto() {
+  const partes = [];
+  for (const art of artigos) {
+    const nome = (art.nome_servidor || '').trim();
+    const cargo = art.cargo_servidor || 'Procurador(a) Federal';
+    if (art.acao === 'dispensar')
+      partes.push(`Dispensa o(a) ${cargo} ${nome} do encargo de ${art.encargo || ''}`);
+    else if (art.acao === 'designar')
+      partes.push(`Designa o(a) ${cargo} ${nome} para o encargo de ${art.encargo || ''}`);
+    else if (art.acao === 'designar_atuacao')
+      partes.push(`Designa o(a) ${cargo} ${nome} para atuar na ${art.unidade || ''}${art.sigla?' ('+art.sigla+')':''}`);
+    else if (art.acao === 'remover')
+      partes.push(`Remove, a pedido, o(a) ${cargo} ${nome} para a ${art.unidade_destino || ''}`);
+    else if (art.acao === 'remover_oficio')
+      partes.push(`Remove o(a) ${cargo} ${nome} para a ${art.unidade_destino || ''}`);
+  }
+  return partes.join('; ') + '.';
+}
+
+function montarTextoArtigo(art, num) {
+  const nome = `<strong>${(art.nome_servidor||'').toUpperCase()}</strong>`;
+  const cargo = art.cargo_servidor || 'Procurador(a) Federal';
+  const siape = art.siape ? `, matrícula Siape ${art.siape}` : '';
+  const sigla = art.sigla ? ` (${art.sigla})` : '';
+  const contar = art.a_contar ? `, a contar de ${dataExtenso(art.a_contar)}` : '';
+  const siglaOri = art.sigla_origem ? ` (${art.sigla_origem})` : '';
+  const siglaDst = art.sigla_destino ? ` (${art.sigla_destino})` : '';
+
+  let corpo = '';
+  switch (art.acao) {
+    case 'dispensar':
+      corpo = `Dispensar o(a) ${cargo} ${nome}${siape}, do encargo de ${art.encargo||''}${art.unidade?' da '+art.unidade:''}${sigla}.`;
+      break;
+    case 'designar':
+      corpo = `Designar o(a) ${cargo} ${nome}${siape}, para o encargo de ${art.encargo||''}${art.unidade?' da '+art.unidade:''}${sigla}${contar}.`;
+      break;
+    case 'designar_atuacao':
+      corpo = `Designar o(a) ${cargo} ${nome}${siape}, para atuar na ${art.unidade||''}${sigla}${contar}.`;
+      break;
+    case 'remover':
+      corpo = `Remover, a pedido, o(a) ${cargo} ${nome}${siape}, da ${art.unidade_origem||''}${siglaOri} para a ${art.unidade_destino||''}${siglaDst}${contar}.`;
+      break;
+    case 'remover_oficio':
+      corpo = `Remover o(a) ${cargo} ${nome}${siape}, da ${art.unidade_origem||''}${siglaOri} para a ${art.unidade_destino||''}${siglaDst}${contar}.`;
+      break;
+    case 'livre':
+      corpo = art.texto_livre || '';
+      break;
+  }
+
+  let html = `<p class="artigo">Art. ${num}º. ${corpo}</p>`;
+
+  if ((art.acao === 'remover' || art.acao === 'remover_oficio') && art.paragrafo_unico !== false) {
+    html += `<p class="par-unico">Parágrafo único: Fica vedada a redistribuição de tarefas em decorrência da alteração de lotação interna do Procurador, permanecendo este responsável pelo atendimento de todas as tarefas que lhes foram atribuídas antes da efetivação da remoção.</p>`;
+  }
+
+  if (art.paragrafos_extras) {
+    for (const pe of art.paragrafos_extras)
+      html += `<p class="artigo">${pe}</p>`;
+  }
+
+  return html;
+}
+
+function gerar() {
+  const ementaTexto = val('ementa') || gerarEmentaAuto();
+  const autoridadeTitulo = val('autoridade_titulo') || 'A Procuradora Regional Federal da 6ª Região';
+  const fundamento = val('fundamento') || 'no uso da competência de que trata o art.8º da Portaria PGF nº 172/2016';
+  const nup = val('nup');
+  const convalidar = chk('convalidar');
+  const vigEspecial = val('vigencia_especial');
+  const sigNome = val('signatario_nome');
+  const sigCargo = val('signatario_cargo');
+
+  const considerando = nup
+    ? `, e considerando o que consta no processo administrativo nº ${nup},`
+    : ',';
+
+  // Preâmbulo
+  let html = '';
+  html += `<p class="ementa">${ementaTexto}</p>`;
+  html += `<div class="separador"></div>`;
+  html += `<p class="preambulo"><strong>${autoridadeTitulo.toUpperCase()}</strong>, ${fundamento}${considerando} <strong>RESOLVE</strong>:</p>`;
+  html += `<div class="separador"></div>`;
+
+  // Artigos
+  let numArt = 1;
+  for (const art of artigos) {
+    html += montarTextoArtigo(art, numArt++);
+  }
+
+  // Artigo final — vigência
+  const vigenciaTexto = vigEspecial || 'Esta Portaria entra em vigor na data de sua publicação.';
+  const convalidaTexto = convalidar
+    ? ' convalidando-se os atos que eventualmente tenham sido praticados em data anterior ao início de sua vigência.'
+    : '';
+  html += `<p class="artigo">Art. ${numArt}º ${vigenciaTexto}${convalidaTexto}</p>`;
+
+  // Assinatura
+  html += `<div class="assinatura">
+    <p>${sigNome.toUpperCase()}</p>
+    <p>${sigCargo.toUpperCase()}</p>
+  </div>`;
+
+  document.getElementById('sheet').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+//  IMPORTAR / EXPORTAR JSON
+// ═══════════════════════════════════════════
+function exportarJSON() {
+  const dados = {
+    ementa: val('ementa'),
+    autoridade_titulo: val('autoridade_titulo'),
+    fundamento: val('fundamento'),
+    nup: val('nup') || null,
+    convalidar: chk('convalidar'),
+    vigencia_especial: val('vigencia_especial') || null,
+    signatario_nome: val('signatario_nome'),
+    signatario_cargo: val('signatario_cargo'),
+    artigos: artigos.map(({ id, ...rest }) => rest),
+  };
+  const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'portaria.json';
+  a.click();
+}
+
+function importarJSON() {
+  document.getElementById('file-input').click();
+}
+
+function lerJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const d = JSON.parse(e.target.result);
+      carregarDados(d);
+    } catch {
+      alert('JSON inválido.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function carregarDados(d) {
+  if (d.ementa) document.getElementById('ementa').value = d.ementa;
+  if (d.autoridade_titulo) document.getElementById('autoridade_titulo').value = d.autoridade_titulo;
+  if (d.fundamento) document.getElementById('fundamento').value = d.fundamento;
+  if (d.nup) document.getElementById('nup').value = d.nup;
+  document.getElementById('convalidar').checked = !!d.convalidar;
+  if (d.vigencia_especial) document.getElementById('vigencia_especial').value = d.vigencia_especial;
+  if (d.signatario_nome) document.getElementById('signatario_nome').value = d.signatario_nome;
+  if (d.signatario_cargo) document.getElementById('signatario_cargo').value = d.signatario_cargo;
+
+  artigos = [];
+  artigoId = 0;
+  if (d.artigos) {
+    for (const art of d.artigos) addArtigo(art);
+  }
+
+  gerar();
+}
+
+// ═══════════════════════════════════════════
+//  UTILITÁRIOS
+// ═══════════════════════════════════════════
+function copiarTexto() {
+  const texto = document.getElementById('sheet').innerText;
+  navigator.clipboard.writeText(texto).then(() => {
+    const btn = event.target;
+    btn.textContent = '✅ Copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar texto', 1800);
+  });
+}
+
+function limpar() {
+  if (!confirm('Limpar todos os dados?')) return;
+  document.getElementById('ementa').value = '';
+  document.getElementById('nup').value = '';
+  document.getElementById('convalidar').checked = false;
+  document.getElementById('vigencia_especial').value = '';
+  artigos = [];
+  artigoId = 0;
+  renderArtigos();
+  document.getElementById('sheet').innerHTML = '<div class="placeholder">Preencha o formulário e clique em <strong>Gerar portaria</strong></div>';
+}
+
+// ═══════════════════════════════════════════
+//  SHAREPOINT INTEGRATION
+// ═══════════════════════════════════════════
+let spConfig = JSON.parse(localStorage.getItem('spConfig') || '{}');
+
+function mostrarAlerta(msg, tipo = 'info') {
+  const container = document.getElementById('alert-container');
+  const alert = document.createElement('div');
+  alert.className = `alert active alert-${tipo}`;
+  alert.innerHTML = msg;
+  container.appendChild(alert);
+  setTimeout(() => alert.remove(), 4000);
+}
+
+function abrirConfigSharePoint() {
+  document.getElementById('config-site-url').value = spConfig.siteUrl || '';
+  document.getElementById('config-pasta').value = spConfig.pasta || 'Portarias';
+  document.getElementById('modal-sharepoint').classList.add('active');
+}
+
+function fecharModalSharePoint() {
+  document.getElementById('modal-sharepoint').classList.remove('active');
+}
+
+function salvarConfigSharePoint() {
+  const siteUrl = document.getElementById('config-site-url').value.trim();
+  const pasta = document.getElementById('config-pasta').value.trim() || 'Portarias';
+
+  if (!siteUrl) {
+    mostrarAlerta('❌ Preencha a URL do SharePoint', 'error');
+    return;
+  }
+
+  spConfig = { siteUrl, pasta };
+  localStorage.setItem('spConfig', JSON.stringify(spConfig));
+  mostrarAlerta('✅ Configuração salva!', 'success');
+  fecharModalSharePoint();
+  atualizarStatusBadge(true);
+}
+
+function atualizarStatusBadge(conectado) {
+  const badge = document.getElementById('status-badge');
+  const text = document.getElementById('status-text');
+  if (conectado && spConfig.siteUrl) {
+    badge.classList.remove('disconnected');
+    badge.classList.add('connected');
+    text.textContent = '✓ Conectado';
+  } else {
+    badge.classList.remove('connected');
+    badge.classList.add('disconnected');
+    text.textContent = '📋 Local';
+  }
+}
+
+function salvarNoSharePoint() {
+  if (!spConfig.siteUrl) {
+    mostrarAlerta('⚠️ Configure SharePoint primeiro', 'info');
+    abrirConfigSharePoint();
+    return;
+  }
+
+  const dados = {
+    ementa: val('ementa'),
+    autoridade_titulo: val('autoridade_titulo'),
+    fundamento: val('fundamento'),
+    nup: val('nup') || null,
+    convalidar: chk('convalidar'),
+    vigencia_especial: val('vigencia_especial') || null,
+    signatario_nome: val('signatario_nome'),
+    signatario_cargo: val('signatario_cargo'),
+    artigos: artigos.map(({ id, ...rest }) => rest),
+    dataSalvamento: new Date().toLocaleString('pt-BR')
+  };
+
+  const json = JSON.stringify(dados, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `portaria_${new Date().getTime()}.json`;
+  a.click();
+
+  mostrarAlerta(`✅ Portaria salva! Enviе para a pasta do SharePoint: ${spConfig.pasta}`, 'success');
+}
+
+function carregarDoSharePoint() {
+  if (!spConfig.siteUrl) {
+    mostrarAlerta('⚠️ Configure SharePoint primeiro', 'info');
+    abrirConfigSharePoint();
+    return;
+  }
+
+  document.getElementById('file-input').onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const dados = JSON.parse(event.target.result);
+        carregarDados(dados);
+        mostrarAlerta('✅ Portaria carregada com sucesso!', 'success');
+      } catch {
+        mostrarAlerta('❌ Erro ao ler o arquivo', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  document.getElementById('file-input').click();
+}
+
+// ═══════════════════════════════════════════
+//  INIT — carrega exemplo ao abrir
+// ═══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Adiciona um artigo de exemplo vazio para orientar o usuário
+  addArtigo({ acao: 'designar', cargo_servidor: 'Procurador Federal' });
+  // Atualizar status de SharePoint
+  atualizarStatusBadge(spConfig.siteUrl ? true : false);
+});
+</script>
+</body>
+</html>
